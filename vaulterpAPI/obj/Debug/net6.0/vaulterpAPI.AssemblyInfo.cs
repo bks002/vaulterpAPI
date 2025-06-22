@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("vaulterpAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ab768b6bfeeddb95d5402edc51873a062f4d00b9")]
 [assembly: System.Reflection.AssemblyProductAttribute("vaulterpAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("vaulterpAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
