@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/bhaveshkumarsingh/RiderProjects/vaulterpAPI/vaulterpAPI/vaulterpAPI.csproj": {}
+    "/Users/bhaveshkumarsingh/Local Files/Codes/vaulterpAPI/vaulterpAPI/vaulterpAPI.csproj": {}
   },
   "projects": {
-    "/Users/bhaveshkumarsingh/RiderProjects/vaulterpAPI/vaulterpAPI/vaulterpAPI.csproj": {
+    "/Users/bhaveshkumarsingh/Local Files/Codes/vaulterpAPI/vaulterpAPI/vaulterpAPI.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/bhaveshkumarsingh/RiderProjects/vaulterpAPI/vaulterpAPI/vaulterpAPI.csproj",
+        "projectUniqueName": "/Users/bhaveshkumarsingh/Local Files/Codes/vaulterpAPI/vaulterpAPI/vaulterpAPI.csproj",
         "projectName": "vaulterpAPI",
-        "projectPath": "/Users/bhaveshkumarsingh/RiderProjects/vaulterpAPI/vaulterpAPI/vaulterpAPI.csproj",
+        "projectPath": "/Users/bhaveshkumarsingh/Local Files/Codes/vaulterpAPI/vaulterpAPI/vaulterpAPI.csproj",
         "packagesPath": "/Users/bhaveshkumarsingh/.nuget/packages/",
-        "outputPath": "/Users/bhaveshkumarsingh/RiderProjects/vaulterpAPI/vaulterpAPI/obj/",
+        "outputPath": "/Users/bhaveshkumarsingh/Local Files/Codes/vaulterpAPI/vaulterpAPI/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/bhaveshkumarsingh/.nuget/NuGet/NuGet.Config"
