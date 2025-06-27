@@ -21,14 +21,14 @@ namespace vaulterpAPI.Controllers.Inventory
         [HttpPost]
         public async Task<IActionResult> CreateRateCard([FromBody] RateCardDto dto)
         {
-            if (dto == null || dto.ItemId <= 0 || dto.VendorId <= 0 || dto.Price <= 0 || dto.CreatedBy <= 0)
+            if (dto == null || dto.ItemId <= 0 || dto.VendorId <= 0 || dto.Price <= 0 )
                 return BadRequest("Invalid input data.");
 
             using var conn = new SqlConnection(GetConnectionString());
             var query = @"INSERT INTO Inventory.RateCard 
-                            (ItemId, VendorId, Price, ValidTill, CreatedBy, IsApproved) 
+                            (ItemId, VendorId, Price, ValidTill, CreatedBy, IsApproved,IsActive) 
                           VALUES 
-                            (@ItemId, @VendorId, @Price, @ValidTill, @CreatedBy, @IsApproved);
+                            (@ItemId, @VendorId, @Price, @ValidTill, @CreatedBy, @IsApproved,1);
                           SELECT SCOPE_IDENTITY();";
 
             using var cmd = new SqlCommand(query, conn);
@@ -36,8 +36,8 @@ namespace vaulterpAPI.Controllers.Inventory
             cmd.Parameters.AddWithValue("@VendorId", dto.VendorId);
             cmd.Parameters.AddWithValue("@Price", dto.Price);
             cmd.Parameters.AddWithValue("@ValidTill", (object?)dto.ValidTill ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@CreatedBy", dto.CreatedBy);
-            cmd.Parameters.AddWithValue("@IsApproved", dto.IsApproved);
+            cmd.Parameters.AddWithValue("@CreatedBy", 1);
+            cmd.Parameters.AddWithValue("@IsApproved", 1);
 
             await conn.OpenAsync();
             var insertedId = Convert.ToInt32(await cmd.ExecuteScalarAsync());

@@ -5,7 +5,7 @@ using vaulterpAPI.Models;
 namespace vaulterpAPI.Controllers.Inventory
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/inventory/[controller]")]
     public class POController : ControllerBase
     {
         private readonly string _constr;
@@ -101,7 +101,7 @@ namespace vaulterpAPI.Controllers.Inventory
         }
 
         [HttpPost("CreatePurchaseOrders")]
-        public async Task<ActionResult<List<object>>> CreatePurchaseOrders([FromBody] List<PODto> orders)
+        public async Task<ActionResult<List<object>>> CreatePurchaseOrders([FromBody] List<CreatePurchaseOrderRequestDto> orders)
         {
             if (orders == null || !orders.Any())
                 return BadRequest("No purchase orders provided.");
@@ -123,9 +123,9 @@ namespace vaulterpAPI.Controllers.Inventory
 
                     var insertPOQuery = @"
                         INSERT INTO Inventory.PurchaseOrder 
-                            (PONumber, VendorId, BillingAddress, ShippingAddress, CreatedBy, OfficeId, IsApproved, IsDeleted)
+                            (PONumber, VendorId, BillingAddress, ShippingAddress,TotalAmount, CreatedBy, OfficeId, IsApproved, IsDeleted)
                         VALUES 
-                            (@PONumber, @VendorId, @BillingAddress, @ShippingAddress, @CreatedBy, @OfficeId, 0, 0);
+                            (@PONumber, @VendorId, @BillingAddress, @ShippingAddress,@totalAmount, @CreatedBy, @OfficeId, 1, 0);
                         SELECT CAST(SCOPE_IDENTITY() AS int);";
 
                     int purchaseOrderId;
@@ -135,6 +135,7 @@ namespace vaulterpAPI.Controllers.Inventory
                         poCmd.Parameters.AddWithValue("@VendorId", dto.VendorId);
                         poCmd.Parameters.AddWithValue("@BillingAddress", (object?)dto.BillingAddress ?? DBNull.Value);
                         poCmd.Parameters.AddWithValue("@ShippingAddress", (object?)dto.ShippingAddress ?? DBNull.Value);
+                        poCmd.Parameters.AddWithValue("@totalAmount", dto.TotalAmount);
                         poCmd.Parameters.AddWithValue("@CreatedBy", dto.CreatedBy);
                         poCmd.Parameters.AddWithValue("@OfficeId", dto.OfficeId);
 

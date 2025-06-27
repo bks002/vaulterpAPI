@@ -5,8 +5,9 @@
         public int Id { get; set; }
 
         // Basic fields
-        public int ItemId { get; set; }
-        public int VendorId { get; set; }
+        public int? ItemId { get; set; }
+        public int? VendorId { get; set; }
+        public int? CategoryId { get; set; }
         public decimal Price { get; set; }
         public DateTime? ValidTill { get; set; }
         public int CreatedBy { get; set; }

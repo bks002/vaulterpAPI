@@ -87,7 +87,7 @@ namespace vaulterpAPI.Controllers.Inventory
             using var conn = new SqlConnection(GetConnectionString());
 
             var query = @"INSERT INTO Inventory.Category (OfficeId, Name, Description, CreatedBy, CreatedOn, IsActive, IsApproved)
-                          VALUES (@OfficeId, @Name, @Description, @CreatedBy, GETDATE(), 1, 0);
+                          VALUES (@OfficeId, @Name, @Description, @CreatedBy, GETDATE(), 1, 1);
                           SELECT SCOPE_IDENTITY();";
 
             using var cmd = new SqlCommand(query, conn);

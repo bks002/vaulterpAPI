@@ -109,7 +109,7 @@ namespace vaulterpAPI.Controllers.Inventory
 
             var query = @"INSERT INTO Inventory.Item 
                           (OfficeId, CategoryId, Name, Description, MeasurementUnit, MinStockLevel, CreatedBy, CreatedOn, IsActive, IsApproved, BrandName, HSNCode) 
-                          VALUES (@OfficeId, @CategoryId, @Name, @Description, @MeasurementUnit, @MinStockLevel, @CreatedBy, GETDATE(), 1, 0, @BrandName, @HSNCode);
+                          VALUES (@OfficeId, @CategoryId, @Name, @Description, @MeasurementUnit, @MinStockLevel, @CreatedBy, GETDATE(), 1,1, @BrandName, @HSNCode);
                           SELECT SCOPE_IDENTITY();";
 
             using var cmd = new SqlCommand(query, conn);
