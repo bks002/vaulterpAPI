@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using vaulterpAPI.Models.Inventory;
 
 namespace vaulterpAPI.Controllers.Inventory
@@ -24,17 +24,17 @@ namespace vaulterpAPI.Controllers.Inventory
             if (officeId <= 0) return BadRequest("OfficeId is required.");
             var items = new List<ItemDto>();
 
-            using var conn = new SqlConnection(GetConnectionString());
-            var query = @"SELECT Id, OfficeId, CategoryId, Name, Description, MeasurementUnit, MinStockLevel,
-                                 IsActive, IsApproved, ApprovedBy, CreatedOn, CreatedBy, BrandName, HSNCode
-                          FROM Inventory.Item
-                          WHERE OfficeId = @OfficeId AND IsActive = 1 AND IsApproved = 1";
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            var query = @"SELECT id, office_id, category_id, name, description, measurement_unit, min_stock_level,
+                                 is_active, is_approved, approved_by, created_on, created_by, brand_name, hsn_code
+                          FROM inventory.item
+                          WHERE office_id = @office_id AND is_active = true AND is_approved = true";
 
-            if (categoryId.HasValue) query += " AND CategoryId = @CategoryId";
+            if (categoryId.HasValue) query += " AND category_id = @category_id";
 
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@OfficeId", officeId);
-            if (categoryId.HasValue) cmd.Parameters.AddWithValue("@CategoryId", categoryId.Value);
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@office_id", officeId);
+            if (categoryId.HasValue) cmd.Parameters.AddWithValue("@category_id", categoryId.Value);
 
             await conn.OpenAsync();
             using var reader = await cmd.ExecuteReaderAsync();
@@ -66,12 +66,12 @@ namespace vaulterpAPI.Controllers.Inventory
         [HttpGet("{id}")]
         public async Task<IActionResult> GetItemById(int id)
         {
-            using var conn = new SqlConnection(GetConnectionString());
-            using var cmd = new SqlCommand(@"SELECT Id, OfficeId, CategoryId, Name, Description, MeasurementUnit, MinStockLevel,
-                                                  IsActive, IsApproved, ApprovedBy, CreatedOn, CreatedBy, BrandName, HSNCode
-                                           FROM Inventory.Item
-                                           WHERE Id = @Id", conn);
-            cmd.Parameters.AddWithValue("@Id", id);
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            using var cmd = new NpgsqlCommand(@"SELECT id, office_id, category_id, name, description, measurement_unit, min_stock_level,
+                                                  is_active, is_approved, approved_by, created_on, created_by, brand_name, hsn_code
+                                           FROM inventory.item
+                                           WHERE id = @id", conn);
+            cmd.Parameters.AddWithValue("@id", id);
 
             await conn.OpenAsync();
             using var reader = await cmd.ExecuteReaderAsync();
@@ -105,61 +105,61 @@ namespace vaulterpAPI.Controllers.Inventory
         public async Task<IActionResult> CreateItem([FromBody] ItemDto dto)
         {
             if (dto == null) return BadRequest("Invalid item data.");
-            using var conn = new SqlConnection(GetConnectionString());
+            using var conn = new NpgsqlConnection(GetConnectionString());
 
-            var query = @"INSERT INTO Inventory.Item 
-                          (OfficeId, CategoryId, Name, Description, MeasurementUnit, MinStockLevel, CreatedBy, CreatedOn, IsActive, IsApproved, BrandName, HSNCode) 
-                          VALUES (@OfficeId, @CategoryId, @Name, @Description, @MeasurementUnit, @MinStockLevel, @CreatedBy, GETDATE(), 1,1, @BrandName, @HSNCode);
-                          SELECT SCOPE_IDENTITY();";
+            var query = @"INSERT INTO inventory.item 
+                          (office_id, category_id, name, description, measurement_unit, min_stock_level, created_by, created_on, is_active, is_approved, brand_name, hsn_code) 
+                          VALUES (@office_id, @category_id, @name, @description, @measurement_unit, @min_stock_level, @created_by, NOW(), true, true, @brand_name, @hsn_code)
+                          RETURNING id;";
 
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@OfficeId", dto.OfficeId);
-            cmd.Parameters.AddWithValue("@CategoryId", dto.CategoryId);
-            cmd.Parameters.AddWithValue("@Name", dto.Name);
-            cmd.Parameters.AddWithValue("@Description", (object?)dto.Description ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@MeasurementUnit", (object?)dto.MeasurementUnit ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@MinStockLevel", dto.MinStockLevel);
-            cmd.Parameters.AddWithValue("@CreatedBy", dto.CreatedBy);
-            cmd.Parameters.AddWithValue("@BrandName", (object?)dto.BrandName ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@HSNCode", (object?)dto.HSNCode ?? DBNull.Value);
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@office_id", dto.OfficeId);
+            cmd.Parameters.AddWithValue("@category_id", dto.CategoryId);
+            cmd.Parameters.AddWithValue("@name", dto.Name);
+            cmd.Parameters.AddWithValue("@description", (object?)dto.Description ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@measurement_unit", (object?)dto.MeasurementUnit ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@min_stock_level", dto.MinStockLevel);
+            cmd.Parameters.AddWithValue("@created_by", dto.CreatedBy);
+            cmd.Parameters.AddWithValue("@brand_name", (object?)dto.BrandName ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@hsn_code", (object?)dto.HSNCode ?? DBNull.Value);
 
             await conn.OpenAsync();
             var insertedId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-            return Ok(new { message = "Item created successfully", Id = insertedId });
+            return Ok(new { message = "Item created successfully", id = insertedId });
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateItem(int id, [FromBody] ItemDto dto)
         {
             if (dto == null) return BadRequest("Invalid item data.");
-            using var conn = new SqlConnection(GetConnectionString());
+            using var conn = new NpgsqlConnection(GetConnectionString());
 
-            var query = @"UPDATE Inventory.Item 
-                          SET Name = @Name,
-                              Description = @Description,
-                              CategoryId = @CategoryId,
-                              MeasurementUnit = @MeasurementUnit,
-                              MinStockLevel = @MinStockLevel,
-                              IsActive = @IsActive,
-                              IsApproved = @IsApproved,
-                              ApprovedBy = @ApprovedBy,
-                              BrandName = @BrandName,
-                              HSNCode = @HSNCode
-                          WHERE Id = @Id";
+            var query = @"UPDATE inventory.item 
+                          SET name = @name,
+                              description = @description,
+                              category_id = @category_id,
+                              measurement_unit = @measurement_unit,
+                              min_stock_level = @min_stock_level,
+                              is_active = @is_active,
+                              is_approved = @is_approved,
+                              approved_by = @approved_by,
+                              brand_name = @brand_name,
+                              hsn_code = @hsn_code
+                          WHERE id = @id";
 
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@Id", id);
-            cmd.Parameters.AddWithValue("@Name", dto.Name);
-            cmd.Parameters.AddWithValue("@Description", (object?)dto.Description ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@CategoryId", dto.CategoryId);
-            cmd.Parameters.AddWithValue("@MeasurementUnit", (object?)dto.MeasurementUnit ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@MinStockLevel", dto.MinStockLevel);
-            cmd.Parameters.AddWithValue("@IsActive", dto.IsActive);
-            cmd.Parameters.AddWithValue("@IsApproved", dto.IsApproved);
-            cmd.Parameters.AddWithValue("@ApprovedBy", (object?)dto.ApprovedBy ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@BrandName", (object?)dto.BrandName ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@HSNCode", (object?)dto.HSNCode ?? DBNull.Value);
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@name", dto.Name);
+            cmd.Parameters.AddWithValue("@description", (object?)dto.Description ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@category_id", dto.CategoryId);
+            cmd.Parameters.AddWithValue("@measurement_unit", (object?)dto.MeasurementUnit ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@min_stock_level", dto.MinStockLevel);
+            cmd.Parameters.AddWithValue("@is_active", dto.IsActive);
+            cmd.Parameters.AddWithValue("@is_approved", dto.IsApproved);
+            cmd.Parameters.AddWithValue("@approved_by", (object?)dto.ApprovedBy ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@brand_name", (object?)dto.BrandName ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@hsn_code", (object?)dto.HSNCode ?? DBNull.Value);
 
             await conn.OpenAsync();
             var rowsAffected = await cmd.ExecuteNonQueryAsync();
@@ -170,14 +170,14 @@ namespace vaulterpAPI.Controllers.Inventory
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteItem(int id)
         {
-            using var conn = new SqlConnection(GetConnectionString());
+            using var conn = new NpgsqlConnection(GetConnectionString());
 
-            var query = @"UPDATE Inventory.Item
-                          SET IsActive = 0
-                          WHERE Id = @Id AND IsActive = 1";
+            var query = @"UPDATE inventory.item
+                          SET is_active = false
+                          WHERE id = @id AND is_active = true";
 
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@Id", id);
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", id);
 
             await conn.OpenAsync();
             var rowsAffected = await cmd.ExecuteNonQueryAsync();
@@ -187,20 +187,20 @@ namespace vaulterpAPI.Controllers.Inventory
                 : NotFound();
         }
 
-        [HttpGet("pendingApproval")]
+        [HttpGet("pending-approval")]
         public async Task<IActionResult> GetUnapprovedItems(int officeId)
         {
             if (officeId <= 0) return BadRequest("OfficeId is required.");
             var items = new List<ItemDto>();
 
-            using var conn = new SqlConnection(GetConnectionString());
-            var query = @"SELECT Id, OfficeId, CategoryId, Name, Description, MeasurementUnit, MinStockLevel,
-                                 IsActive, IsApproved, ApprovedBy, CreatedOn, CreatedBy, BrandName, HSNCode
-                          FROM Inventory.Item
-                          WHERE OfficeId = @OfficeId AND IsActive = 1 AND IsApproved = 0";
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            var query = @"SELECT id, office_id, category_id, name, description, measurement_unit, min_stock_level,
+                                 is_active, is_approved, approved_by, created_on, created_by, brand_name, hsn_code
+                          FROM inventory.item
+                          WHERE office_id = @office_id AND is_active = true AND is_approved = false";
 
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@OfficeId", officeId);
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@office_id", officeId);
 
             await conn.OpenAsync();
             using var reader = await cmd.ExecuteReaderAsync();

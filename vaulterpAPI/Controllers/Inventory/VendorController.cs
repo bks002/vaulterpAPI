@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using vaulterpAPI.Models;
 
 namespace vaulterpAPI.Controllers.Inventory
@@ -23,16 +23,17 @@ namespace vaulterpAPI.Controllers.Inventory
         {
             var vendors = new List<VendorDto>();
 
-            using var conn = new SqlConnection(GetConnectionString());
-            using var cmd = new SqlCommand(@"SELECT Id, OfficeId, Name, ContactPerson, ContactNumber, Email, Address, 
-                                              GSTNumber, PANNumber, IsApproved, ApprovedBy, CreatedBy, CreatedOn, IsActive 
-                                              FROM Inventory.Vendor 
-                                              WHERE OfficeId = @OfficeId AND IsActive = 1 AND IsApproved = 1", conn);
-            cmd.Parameters.AddWithValue("@OfficeId", officeId);
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            using var cmd = new NpgsqlCommand(@"
+                SELECT id, office_id, name, contact_person, contact_number, email, address,
+                       gst_number, pan_number, is_approved, approved_by, created_by, created_on, is_active
+                FROM inventory.vendor
+                WHERE office_id = @office_id AND is_active = true AND is_approved = true", conn);
 
+            cmd.Parameters.AddWithValue("@office_id", officeId);
             await conn.OpenAsync();
-            using var reader = await cmd.ExecuteReaderAsync();
 
+            using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
                 vendors.Add(new VendorDto
@@ -50,7 +51,7 @@ namespace vaulterpAPI.Controllers.Inventory
                     ApprovedBy = reader.IsDBNull(10) ? (int?)null : reader.GetInt32(10),
                     CreatedBy = reader.GetInt32(11),
                     CreatedOn = reader.GetDateTime(12),
-                    IsActive = reader.GetBoolean(13),
+                    IsActive = reader.GetBoolean(13)
                 });
             }
 
@@ -60,16 +61,17 @@ namespace vaulterpAPI.Controllers.Inventory
         [HttpGet("{id}")]
         public async Task<IActionResult> GetVendorById(int id)
         {
-            using var conn = new SqlConnection(GetConnectionString());
-            using var cmd = new SqlCommand(@"SELECT Id, OfficeId, Name, ContactPerson, ContactNumber, Email, Address,
-                                              GSTNumber, PANNumber, IsApproved, ApprovedBy, CreatedBy, CreatedOn, IsActive
-                                              FROM Inventory.Vendor 
-                                              WHERE Id = @Id", conn);
-            cmd.Parameters.AddWithValue("@Id", id);
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            using var cmd = new NpgsqlCommand(@"
+                SELECT id, office_id, name, contact_person, contact_number, email, address,
+                       gst_number, pan_number, is_approved, approved_by, created_by, created_on, is_active
+                FROM inventory.vendor
+                WHERE id = @id", conn);
 
+            cmd.Parameters.AddWithValue("@id", id);
             await conn.OpenAsync();
-            using var reader = await cmd.ExecuteReaderAsync();
 
+            using var reader = await cmd.ExecuteReaderAsync();
             if (await reader.ReadAsync())
             {
                 var vendor = new VendorDto
@@ -87,7 +89,7 @@ namespace vaulterpAPI.Controllers.Inventory
                     ApprovedBy = reader.IsDBNull(10) ? (int?)null : reader.GetInt32(10),
                     CreatedBy = reader.GetInt32(11),
                     CreatedOn = reader.GetDateTime(12),
-                    IsActive = reader.GetBoolean(13),
+                    IsActive = reader.GetBoolean(13)
                 };
                 return Ok(vendor);
             }
@@ -98,104 +100,96 @@ namespace vaulterpAPI.Controllers.Inventory
         [HttpPost]
         public async Task<IActionResult> CreateVendor([FromBody] VendorDto dto)
         {
-            if (dto == null) return BadRequest("Invalid vendor data.");
-            using var conn = new SqlConnection(GetConnectionString());
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            var query = @"
+                INSERT INTO inventory.vendor
+                (office_id, name, contact_person, contact_number, email, address, gst_number, pan_number,
+                 created_by, created_on, is_active, is_approved)
+                VALUES (@office_id, @name, @contact_person, @contact_number, @email, @address, @gst_number, @pan_number,
+                        @created_by, current_timestamp, true, true)
+                RETURNING id;";
 
-            var query = @"INSERT INTO Inventory.Vendor 
-                          (OfficeId, Name, ContactPerson, ContactNumber, Email, Address, GSTNumber, PANNumber, CreatedBy, CreatedOn, IsActive, IsApproved)
-                          VALUES (@OfficeId, @Name, @ContactPerson, @ContactNumber, @Email, @Address, @GSTNumber, @PANNumber, @CreatedBy, GETDATE(), 1, 1);
-                          SELECT SCOPE_IDENTITY();";
-
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@OfficeId", dto.OfficeId);
-            cmd.Parameters.AddWithValue("@Name", dto.Name);
-            cmd.Parameters.AddWithValue("@ContactPerson", (object?)dto.ContactPerson ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ContactNumber", (object?)dto.ContactNumber ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Email", (object?)dto.Email ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Address", (object?)dto.Address ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@GSTNumber", (object?)dto.GSTNumber ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@PANNumber", (object?)dto.PANNumber ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@CreatedBy", dto.CreatedBy);
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@office_id", dto.OfficeId);
+            cmd.Parameters.AddWithValue("@name", dto.Name);
+            cmd.Parameters.AddWithValue("@contact_person", (object?)dto.ContactPerson ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@contact_number", (object?)dto.ContactNumber ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@email", (object?)dto.Email ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@address", (object?)dto.Address ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@gst_number", (object?)dto.GSTNumber ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@pan_number", (object?)dto.PANNumber ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@created_by", dto.CreatedBy);
 
             await conn.OpenAsync();
             var insertedId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-            return Ok(new { message = "Vendor created successfully", Id = insertedId });
+            return Ok(new { message = "Vendor created successfully", id = insertedId });
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateVendor(int id, [FromBody] VendorDto dto)
         {
-            if (dto == null) return BadRequest("Invalid vendor data.");
-            using var conn = new SqlConnection(GetConnectionString());
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            var query = @"
+                UPDATE inventory.vendor SET
+                    name = @name,
+                    contact_person = @contact_person,
+                    contact_number = @contact_number,
+                    email = @email,
+                    address = @address,
+                    gst_number = @gst_number,
+                    pan_number = @pan_number,
+                    is_approved = @is_approved,
+                    approved_by = @approved_by
+                WHERE id = @id;";
 
-            var query = @"UPDATE Inventory.Vendor 
-                          SET Name = @Name,
-                              ContactPerson = @ContactPerson,
-                              ContactNumber = @ContactNumber,
-                              Email = @Email,
-                              Address = @Address,
-                              GSTNumber = @GSTNumber,
-                              PANNumber = @PANNumber,
-                              IsApproved = @IsApproved,
-                              ApprovedBy = @ApprovedBy
-                          WHERE Id = @Id";
-
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@Id", id);
-            cmd.Parameters.AddWithValue("@Name", dto.Name);
-            cmd.Parameters.AddWithValue("@ContactPerson", (object?)dto.ContactPerson ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ContactNumber", (object?)dto.ContactNumber ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Email", (object?)dto.Email ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Address", (object?)dto.Address ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@GSTNumber", (object?)dto.GSTNumber ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@PANNumber", (object?)dto.PANNumber ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@IsApproved", dto.IsApproved);
-            cmd.Parameters.AddWithValue("@ApprovedBy", (object?)dto.ApprovedBy ?? DBNull.Value);
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@name", dto.Name);
+            cmd.Parameters.AddWithValue("@contact_person", (object?)dto.ContactPerson ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@contact_number", (object?)dto.ContactNumber ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@email", (object?)dto.Email ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@address", (object?)dto.Address ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@gst_number", (object?)dto.GSTNumber ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@pan_number", (object?)dto.PANNumber ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@is_approved", dto.IsApproved);
+            cmd.Parameters.AddWithValue("@approved_by", (object?)dto.ApprovedBy ?? DBNull.Value);
 
             await conn.OpenAsync();
             var rowsAffected = await cmd.ExecuteNonQueryAsync();
-
-            return rowsAffected > 0
-                ? Ok(new { message = "Vendor updated successfully" })
-                : NotFound();
+            return rowsAffected > 0 ? Ok(new { message = "Vendor updated successfully" }) : NotFound();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteVendor(int id)
         {
-            using var conn = new SqlConnection(GetConnectionString());
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            var query = "UPDATE inventory.vendor SET is_active = false WHERE id = @id AND is_active = true";
 
-            var query = @"UPDATE Inventory.Vendor 
-                          SET IsActive = 0 
-                          WHERE Id = @Id AND IsActive = 1";
-
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@Id", id);
-
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", id);
             await conn.OpenAsync();
-            var rowsAffected = await cmd.ExecuteNonQueryAsync();
 
-            return rowsAffected > 0
-                ? Ok(new { message = "Vendor deleted (soft) successfully" })
-                : NotFound();
+            var rowsAffected = await cmd.ExecuteNonQueryAsync();
+            return rowsAffected > 0 ? Ok(new { message = "Vendor deleted (soft) successfully" }) : NotFound();
         }
 
         [HttpGet("pendingApproval")]
-        public async Task<IActionResult> GetPendingApprovalVendors(int officeId)
+        public async Task<IActionResult> GetPendingApprovalVendors(int office_id)
         {
             var pendingVendors = new List<VendorDto>();
 
-            using var conn = new SqlConnection(GetConnectionString());
-            using var cmd = new SqlCommand(@"SELECT Id, OfficeId, Name, ContactPerson, ContactNumber, Email, Address,
-                                              GSTNumber, PANNumber, IsApproved, ApprovedBy, CreatedBy, CreatedOn, IsActive
-                                              FROM Inventory.Vendor 
-                                              WHERE OfficeId = @OfficeId AND IsActive = 1 AND IsApproved = 0", conn);
-            cmd.Parameters.AddWithValue("@OfficeId", officeId);
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            using var cmd = new NpgsqlCommand(@"
+                SELECT id, office_id, name, contact_person, contact_number, email, address,
+                       gst_number, pan_number, is_approved, approved_by, created_by, created_on, is_active
+                FROM inventory.vendor
+                WHERE office_id = @office_id AND is_active = true AND is_approved = false", conn);
 
+            cmd.Parameters.AddWithValue("@office_id", office_id);
             await conn.OpenAsync();
-            using var reader = await cmd.ExecuteReaderAsync();
 
+            using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
                 pendingVendors.Add(new VendorDto
@@ -213,11 +207,11 @@ namespace vaulterpAPI.Controllers.Inventory
                     ApprovedBy = reader.IsDBNull(10) ? (int?)null : reader.GetInt32(10),
                     CreatedBy = reader.GetInt32(11),
                     CreatedOn = reader.GetDateTime(12),
-                    IsActive = reader.GetBoolean(13),
+                    IsActive = reader.GetBoolean(13)
                 });
             }
 
-            return pendingVendors.Count > 0 ? Ok(pendingVendors) : NotFound();
+            return Ok(pendingVendors);
         }
     }
 }

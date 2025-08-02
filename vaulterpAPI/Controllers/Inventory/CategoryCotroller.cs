@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using vaulterpAPI.Models.Inventory;
 
 namespace vaulterpAPI.Controllers.Inventory
@@ -23,11 +23,11 @@ namespace vaulterpAPI.Controllers.Inventory
         {
             var categories = new List<CategoryDto>();
 
-            using var conn = new SqlConnection(GetConnectionString());
-            using var cmd = new SqlCommand(@"SELECT Id, OfficeId, Name, Description, IsActive, IsApproved, CreatedOn, CreatedBy 
-                                              FROM Inventory.Category 
-                                              WHERE OfficeId = @OfficeId AND IsActive = 1 AND IsApproved = 1", conn);
-            cmd.Parameters.AddWithValue("@OfficeId", officeId);
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            using var cmd = new NpgsqlCommand(@"SELECT id, office_id, name, description, is_active, is_approved, created_on, created_by 
+                                                FROM inventory.category 
+                                                WHERE office_id = @office_id AND is_active = true AND is_approved = true", conn);
+            cmd.Parameters.AddWithValue("@office_id", officeId);
             await conn.OpenAsync();
 
             using var reader = await cmd.ExecuteReaderAsync();
@@ -52,11 +52,11 @@ namespace vaulterpAPI.Controllers.Inventory
         [HttpGet("{id}")]
         public async Task<IActionResult> GetCategoryById(int id)
         {
-            using var conn = new SqlConnection(GetConnectionString());
-            using var cmd = new SqlCommand(@"SELECT Id, OfficeId, Name, Description, IsActive, IsApproved, CreatedOn, CreatedBy 
-                                              FROM Inventory.Category 
-                                              WHERE Id = @Id", conn);
-            cmd.Parameters.AddWithValue("@Id", id);
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            using var cmd = new NpgsqlCommand(@"SELECT id, office_id, name, description, is_active, is_approved, created_on, created_by 
+                                                FROM inventory.category 
+                                                WHERE id = @id", conn);
+            cmd.Parameters.AddWithValue("@id", id);
 
             await conn.OpenAsync();
             using var reader = await cmd.ExecuteReaderAsync();
@@ -84,42 +84,49 @@ namespace vaulterpAPI.Controllers.Inventory
         public async Task<IActionResult> CreateCategory([FromBody] CategoryDto dto)
         {
             if (dto == null) return BadRequest("Invalid category data.");
-            using var conn = new SqlConnection(GetConnectionString());
 
-            var query = @"INSERT INTO Inventory.Category (OfficeId, Name, Description, CreatedBy, CreatedOn, IsActive, IsApproved)
-                          VALUES (@OfficeId, @Name, @Description, @CreatedBy, GETDATE(), 1, 1);
-                          SELECT SCOPE_IDENTITY();";
+            using var conn = new NpgsqlConnection(GetConnectionString());
 
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@OfficeId", dto.OfficeId);
-            cmd.Parameters.AddWithValue("@Name", dto.Name);
-            cmd.Parameters.AddWithValue("@Description", (object?)dto.Description ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@CreatedBy", dto.CreatedBy);
+            var query = @"INSERT INTO inventory.category 
+                            (office_id, name, description, created_by, created_on, is_active, is_approved)
+                          VALUES 
+                            (@office_id, @name, @description, @created_by, NOW(), true, true)
+                          RETURNING id;";
+
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@office_id", dto.OfficeId);
+            cmd.Parameters.AddWithValue("@name", dto.Name);
+            cmd.Parameters.AddWithValue("@description", (object?)dto.Description ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@created_by", dto.CreatedBy);
 
             await conn.OpenAsync();
             var insertedId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-            return Ok(new { message = "Category created successfully", Id = insertedId });
+            return Ok(new { message = "Category created successfully", id = insertedId });
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCategory(int id, [FromBody] CategoryDto dto)
         {
             if (dto == null) return BadRequest("Invalid category data.");
-            using var conn = new SqlConnection(GetConnectionString());
 
-            var query = @"UPDATE Inventory.Category
-                          SET Name = @Name, Description = @Description, IsActive = @IsActive,
-                              IsApproved = @IsApproved, ApprovedBy = @ApprovedBy
-                          WHERE Id = @Id";
+            using var conn = new NpgsqlConnection(GetConnectionString());
 
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@Id", id);
-            cmd.Parameters.AddWithValue("@Name", dto.Name);
-            cmd.Parameters.AddWithValue("@Description", (object?)dto.Description ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@IsActive", dto.IsActive);
-            cmd.Parameters.AddWithValue("@IsApproved", dto.IsApproved);
-            cmd.Parameters.AddWithValue("@ApprovedBy", (object?)dto.ApprovedBy ?? DBNull.Value);
+            var query = @"UPDATE inventory.category
+                          SET name = @name, 
+                              description = @description, 
+                              is_active = @is_active, 
+                              is_approved = @is_approved, 
+                              approved_by = @approved_by
+                          WHERE id = @id";
+
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@name", dto.Name);
+            cmd.Parameters.AddWithValue("@description", (object?)dto.Description ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@is_active", dto.IsActive);
+            cmd.Parameters.AddWithValue("@is_approved", dto.IsApproved);
+            cmd.Parameters.AddWithValue("@approved_by", (object?)dto.ApprovedBy ?? DBNull.Value);
 
             await conn.OpenAsync();
             var rowsAffected = await cmd.ExecuteNonQueryAsync();
@@ -132,14 +139,14 @@ namespace vaulterpAPI.Controllers.Inventory
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
-            using var conn = new SqlConnection(GetConnectionString());
+            using var conn = new NpgsqlConnection(GetConnectionString());
 
-            var query = @"UPDATE Inventory.Category 
-                          SET IsActive = 0 
-                          WHERE Id = @Id AND IsActive = 1";
+            var query = @"UPDATE inventory.category 
+                          SET is_active = false 
+                          WHERE id = @id AND is_active = true";
 
-            using var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@Id", id);
+            using var cmd = new NpgsqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", id);
 
             await conn.OpenAsync();
             var rowsAffected = await cmd.ExecuteNonQueryAsync();
@@ -149,22 +156,22 @@ namespace vaulterpAPI.Controllers.Inventory
                 : NotFound();
         }
 
-        [HttpGet("pendingApproval")]
+        [HttpGet("pending-approval")]
         public async Task<IActionResult> GetPendingApprovalCategories(int officeId)
         {
-            var pendingCategories = new List<CategoryDto>();
+            var categories = new List<CategoryDto>();
 
-            using var conn = new SqlConnection(GetConnectionString());
-            using var cmd = new SqlCommand(@"SELECT Id, OfficeId, Name, Description, IsActive, IsApproved, CreatedOn, CreatedBy
-                                              FROM Inventory.Category
-                                              WHERE OfficeId = @OfficeId AND IsActive = 1 AND IsApproved = 0", conn);
-            cmd.Parameters.AddWithValue("@OfficeId", officeId);
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            using var cmd = new NpgsqlCommand(@"SELECT id, office_id, name, description, is_active, is_approved, created_on, created_by
+                                                FROM inventory.category
+                                                WHERE office_id = @office_id AND is_active = true AND is_approved = false", conn);
+            cmd.Parameters.AddWithValue("@office_id", officeId);
 
             await conn.OpenAsync();
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                pendingCategories.Add(new CategoryDto
+                categories.Add(new CategoryDto
                 {
                     Id = reader.GetInt32(0),
                     OfficeId = reader.GetInt32(1),
@@ -177,7 +184,7 @@ namespace vaulterpAPI.Controllers.Inventory
                 });
             }
 
-            return Ok(pendingCategories);
+            return Ok(categories);
         }
     }
 }

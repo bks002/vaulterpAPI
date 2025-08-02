@@ -30,6 +30,11 @@
         public decimal Quantity { get; set; }
         public decimal Rate { get; set; }
         public decimal LineTotal { get; set; }
+
+        public decimal QuantityReceived { get; set; }
+        public bool IsRejected { get; set; }
+        public string RejectionRemarks { get; set; }
+        public bool IsCompleted { get; set; }
     }
     public class CreatePurchaseOrderRequestDto
     {
